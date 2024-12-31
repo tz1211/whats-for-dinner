@@ -576,7 +576,7 @@ function Home() {
       </div>
 
       <div className={css.recommendedSection}>
-        <h2 style={{ textAlign: 'center' }}>Recommended Recipes 📄</h2>
+        <h2 style={{ textAlign: 'center' }}>Recommend Recipes 📄</h2>
         <div className={css.searchRow} style={{ marginBottom: '16px', gap: '12px', justifyContent: 'center' }}>
           <button className={css.recipeOfDayButton}>
             <span style={{ fontSize: '20px' }}>✨</span>
