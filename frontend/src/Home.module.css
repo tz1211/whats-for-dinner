@@ -297,10 +297,11 @@ h3.good {
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid transparent;
-  border-top-color: #ffffff;
+  border: 2px solid #ffffff;
+  border-top-color: transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  margin-right: 8px;
 }
 
 @keyframes spin {
@@ -772,6 +773,20 @@ h3.good {
   margin: 4px 0;
 }
 
+.recommendedRecipe h4 {
+  color: #ffffff;
+  font-size: 16px;
+  margin: 16px 0 8px 0;
+  font-weight: 500;
+}
+
+.recommendedRecipe p {
+  margin: 0;
+  color: #b0b0b0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .recipeOfDayButton {
   background: #6b46c1;
   color: #ffffff;
@@ -799,4 +814,51 @@ h3.good {
 .recipeOfDayButton:active {
   background: #44337a;
   transform: translateY(1px);
+}
+
+.recipeLink {
+  display: inline-block;
+  color: #6b46c1;
+  text-decoration: none;
+  font-size: 14px;
+  margin-top: 8px;
+  transition: color 0.2s ease;
+}
+
+.recipeLink:hover {
+  color: #553c9a;
+}
+
+.recommendedRecipesList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.recipeOfDayButton:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.shoppingList {
+  background: #242424;
+  border-radius: 6px;
+  padding: 24px;
+  margin-top: 0px;
+  border: 1px solid #553c9a;
+}
+
+.shoppingList h4 {
+  color: #6b46c1;
+  font-size: 16px;
+  margin: 0 0 12px 0;
+  font-weight: 500;
+}
+
+.shoppingList p {
+  margin: 0;
+  color: #b0b0b0;
+  font-size: 14px;
+  line-height: 1.6;
 }

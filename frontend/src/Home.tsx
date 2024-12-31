@@ -4,6 +4,14 @@ import { Osdk } from "@osdk/client";
 import css from "./Home.module.css";
 import client from "./client";
 
+interface RecipeResult {
+  Name: string;
+  Ingredients: string;
+  'Items to Buy': string;
+  Link: string;
+  Procedure: string;
+}
+
 function Home() {
   const [objects, setObjects] = useState<Osdk.Instance<FridgeItem>[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,6 +40,8 @@ function Home() {
   const [isSelecting, setIsSelecting] = useState(false);
   const [expiryFilters, setExpiryFilters] = useState<Set<string>>(new Set(['all']));
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [recommendedRecipes, setRecommendedRecipes] = useState<RecipeResult[]>([]);
+  const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
 
   // Set document title
   useEffect(() => {
@@ -48,6 +58,13 @@ function Home() {
     }
     fetchObjects();
   }, []);
+
+  // Auto-trigger Recipe of the Day on page load
+  useEffect(() => {
+    if (objects.length > 0) {
+      handleRecipeOfDay();
+    }
+  }, [objects]);
 
   useEffect(() => {
     if (waitingForExpiration) {
@@ -453,6 +470,36 @@ function Home() {
     setSelectedItems(new Set());
   };
 
+  const handleRecipeOfDay = async () => {
+    setIsLoadingRecipes(true);
+    setRecommendedRecipes([]);
+
+    try {
+      const itemsSet = client(FridgeItem).where({
+        $and: [
+          { daysUntilExpiration: { $gte: 0 } },
+          { daysUntilExpiration: { $lte: 2 } }
+        ]
+      });
+      const recipesSet = client(Recipe);
+
+      const result = await client(recipeRetriever).executeFunction({
+        items: itemsSet,
+        topSearch: 10,
+        recipes: recipesSet
+      });
+      
+      // The result is already an array of recipes
+      if (Array.isArray(result) && result.length > 0) {
+        setRecommendedRecipes([result[0]]);
+      }
+    } catch (error) {
+      console.error('Error generating recipes:', error);
+    } finally {
+      setIsLoadingRecipes(false);
+    }
+  };
+
   return (
     <>
       <div className={css.dashboardContainer}>
@@ -576,11 +623,24 @@ function Home() {
       </div>
 
       <div className={css.recommendedSection}>
-        <h2 style={{ textAlign: 'center' }}>Recommend Recipes 📄</h2>
+        <h2 style={{ textAlign: 'center' }}>Recommended Recipes 📄</h2>
         <div className={css.searchRow} style={{ marginBottom: '16px', gap: '12px', justifyContent: 'center' }}>
-          <button className={css.recipeOfDayButton}>
-            <span style={{ fontSize: '20px' }}>✨</span>
-            Recipe of the Day
+          <button 
+            className={css.recipeOfDayButton} 
+            onClick={handleRecipeOfDay}
+            disabled={isLoadingRecipes}
+          >
+            {isLoadingRecipes ? (
+              <>
+                <div className={css.spinner}></div>
+                Generating...
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: '20px' }}>✨</span>
+                Recipe of the Day
+              </>
+            )}
           </button>
           {isSelecting && selectedItems.size > 0 && (
             <button className={css.recipeOfDayButton}>
@@ -589,6 +649,46 @@ function Home() {
             </button>
           )}
         </div>
+        {!isLoadingRecipes && recommendedRecipes.length > 0 && (
+          <div className={css.recommendedRecipesList} style={{ marginTop: '36px' }}>
+            <div className={css.recommendedRecipe} style={{ padding: '24px' }}>
+              <h3>{recommendedRecipes[0].Name}</h3>
+              
+              <h4>Ingredients:</h4>
+              <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[0].Ingredients}</p>
+              
+              <h4>Procedure:</h4>
+              {(() => {
+                try {
+                  const procedures = JSON.parse(recommendedRecipes[0].Procedure);
+                  return procedures.map((step: string, index: number) => (
+                    <p key={index} style={{ whiteSpace: 'pre-line', marginBottom: '8px' }}>
+                      {index + 1}. {step}
+                    </p>
+                  ));
+                } catch (e) {
+                  return <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[0].Procedure}</p>;
+                }
+              })()}
+              
+              {recommendedRecipes[0].Link && (
+                <a 
+                  href={recommendedRecipes[0].Link} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className={css.recipeLink}
+                >
+                  View Original Recipe
+                </a>
+              )}
+            </div>
+
+            <div className={css.shoppingList}>
+              <h4>Shopping List:</h4>
+              <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[0]['Items to Buy']}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedItem && (
