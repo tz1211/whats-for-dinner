@@ -42,6 +42,7 @@ function Home() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [recommendedRecipes, setRecommendedRecipes] = useState<RecipeResult[]>([]);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
+  const [userPreference, setUserPreference] = useState("");
 
   // Set document title
   useEffect(() => {
@@ -59,9 +60,12 @@ function Home() {
     fetchObjects();
   }, []);
 
-  // Auto-trigger Recipe of the Day on page load
+  // Auto-trigger Recipe of the Day on initial page load only
   useEffect(() => {
-    if (objects.length > 0) {
+    const hasInitiallyLoaded = objects.length > 0;
+    const isFirstLoad = !recommendedRecipes.length;
+    
+    if (hasInitiallyLoaded && isFirstLoad) {
       handleRecipeOfDay();
     }
   }, [objects]);
@@ -76,8 +80,13 @@ function Home() {
         
         const updatedItem = items.find(item => item.$primaryKey === waitingForExpiration.itemId);
         if (updatedItem && updatedItem.daysUntilExpiration !== waitingForExpiration.originalDaysUntilExpiration) {
-          // Update the objects list
-          setObjects(items);
+          // Update the objects list without triggering recipe refresh
+          setObjects(prevObjects => {
+            const newObjects = prevObjects.map(obj => 
+              obj.$primaryKey === updatedItem.$primaryKey ? updatedItem : obj
+            );
+            return newObjects;
+          });
           
           // Update selected item if it's the one we're waiting for
           if (selectedItem && selectedItem.$primaryKey === waitingForExpiration.itemId) {
@@ -486,7 +495,8 @@ function Home() {
       const result = await client(recipeRetriever).executeFunction({
         items: itemsSet,
         topSearch: 10,
-        recipes: recipesSet
+        recipes: recipesSet,
+        userPreference: userPreference.trim() || "None"
       });
       
       // The result is already an array of recipes
@@ -624,7 +634,24 @@ function Home() {
 
       <div className={css.recommendedSection}>
         <h2 style={{ textAlign: 'center' }}>Recommended Recipes 📄</h2>
-        <div className={css.searchRow} style={{ marginBottom: '16px', gap: '12px', justifyContent: 'center' }}>
+        <div style={{ 
+          padding: '0 24px',
+          marginTop: '24px',
+          marginBottom: '24px'
+        }}>
+          <input
+            type="text"
+            placeholder="Add recipe preference here if applicable"
+            value={userPreference}
+            onChange={(e) => setUserPreference(e.target.value)}
+            className={css.searchInput}
+            style={{ 
+              width: '100%',
+              boxSizing: 'border-box'
+            }}
+          />
+        </div>
+        <div className={css.searchRow} style={{ marginBottom: '24px', gap: '12px', justifyContent: 'center' }}>
           <button 
             className={css.recipeOfDayButton} 
             onClick={handleRecipeOfDay}
@@ -650,8 +677,17 @@ function Home() {
           )}
         </div>
         {!isLoadingRecipes && recommendedRecipes.length > 0 && (
-          <div className={css.recommendedRecipesList} style={{ marginTop: '36px' }}>
-            <div className={css.recommendedRecipe} style={{ padding: '24px' }}>
+          <div className={css.recommendedRecipesList}>
+            <div className={css.shoppingList}>
+              <h4>Shopping List:</h4>
+              <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[0]['Items to Buy']}</p>
+            </div>
+
+            <div className={css.recommendedRecipe} style={{ 
+              padding: '24px',
+              maxHeight: '400px',
+              overflowY: 'auto'
+            }}>
               <h3>{recommendedRecipes[0].Name}</h3>
               
               <h4>Ingredients:</h4>
@@ -681,11 +717,6 @@ function Home() {
                   View Original Recipe
                 </a>
               )}
-            </div>
-
-            <div className={css.shoppingList}>
-              <h4>Shopping List:</h4>
-              <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[0]['Items to Buy']}</p>
             </div>
           </div>
         )}
