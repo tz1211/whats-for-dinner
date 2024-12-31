@@ -879,3 +879,35 @@ h3.good {
   font-size: 14px;
   line-height: 1.6;
 }
+
+.recipeNavButton {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(107, 70, 193, 0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.recipeNavButton.dimmed {
+  opacity: 0.3;
+}
+
+.recipeNavButton:hover {
+  background: rgba(107, 70, 193, 1);
+  opacity: 1;
+}
+
+.recipeNavButton:active {
+  transform: translateY(-50%) scale(0.95);
+}

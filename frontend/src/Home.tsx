@@ -44,6 +44,8 @@ function Home() {
   const [userPreference, setUserPreference] = useState("");
   const [isLoadingRecipeOfDay, setIsLoadingRecipeOfDay] = useState(false);
   const [isLoadingSelectedRecipe, setIsLoadingSelectedRecipe] = useState(false);
+  const [currentRecipeIndex, setCurrentRecipeIndex] = useState(0);
+  const [showNavButtons, setShowNavButtons] = useState(false);
   const hasInitiallyLoadedRef = useRef(false);
 
   // Set document title
@@ -512,9 +514,9 @@ function Home() {
   const handleGenerateForSelected = async () => {
     setIsLoadingSelectedRecipe(true);
     setRecommendedRecipes([]);
+    setCurrentRecipeIndex(0);
 
     try {
-      // Create a set of selected items
       const selectedItemsSet = client(FridgeItem).where({
         id: { $in: Array.from(selectedItems) }
       });
@@ -528,13 +530,21 @@ function Home() {
       });
       
       if (Array.isArray(result) && result.length > 0) {
-        setRecommendedRecipes([result[0]]);
+        setRecommendedRecipes(result.slice(0, 3));
       }
     } catch (error) {
       console.error('Error generating recipes for selected items:', error);
     } finally {
       setIsLoadingSelectedRecipe(false);
     }
+  };
+
+  const handleNextRecipe = () => {
+    setCurrentRecipeIndex((prev) => (prev + 1) % recommendedRecipes.length);
+  };
+
+  const handlePrevRecipe = () => {
+    setCurrentRecipeIndex((prev) => (prev - 1 + recommendedRecipes.length) % recommendedRecipes.length);
   };
 
   return (
@@ -717,10 +727,37 @@ function Home() {
           )}
         </div>
         {!isLoadingRecipeOfDay && recommendedRecipes.length > 0 && (
-          <div className={css.recommendedRecipesList}>
+          <div 
+            className={css.recommendedRecipesList}
+            onMouseEnter={() => setShowNavButtons(true)}
+            onMouseLeave={() => setShowNavButtons(false)}
+            style={{ position: 'relative' }}
+          >
+            {recommendedRecipes.length > 1 && (
+              <>
+                {currentRecipeIndex > 0 && (
+                  <button 
+                    onClick={handlePrevRecipe}
+                    className={`${css.recipeNavButton} ${!showNavButtons ? css.dimmed : ''}`}
+                    style={{ left: 0 }}
+                  >
+                    ←
+                  </button>
+                )}
+                {currentRecipeIndex < recommendedRecipes.length - 1 && (
+                  <button 
+                    onClick={handleNextRecipe}
+                    className={`${css.recipeNavButton} ${!showNavButtons ? css.dimmed : ''}`}
+                    style={{ right: 0 }}
+                  >
+                    →
+                  </button>
+                )}
+              </>
+            )}
             <div className={css.shoppingList}>
               <h4>Shopping List:</h4>
-              <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[0]['Items to Buy']}</p>
+              <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[currentRecipeIndex]['Items to Buy']}</p>
             </div>
 
             <div className={css.recommendedRecipe} style={{ 
@@ -728,28 +765,28 @@ function Home() {
               maxHeight: '400px',
               overflowY: 'auto'
             }}>
-              <h3>{recommendedRecipes[0].Name}</h3>
+              <h3>{recommendedRecipes[currentRecipeIndex].Name}</h3>
               
               <h4>Ingredients:</h4>
-              <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[0].Ingredients}</p>
+              <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[currentRecipeIndex].Ingredients}</p>
               
               <h4>Procedure:</h4>
               {(() => {
                 try {
-                  const procedures = JSON.parse(recommendedRecipes[0].Procedure);
+                  const procedures = JSON.parse(recommendedRecipes[currentRecipeIndex].Procedure);
                   return procedures.map((step: string, index: number) => (
                     <p key={index} style={{ whiteSpace: 'pre-line', marginBottom: '8px' }}>
                       {index + 1}. {step}
                     </p>
                   ));
                 } catch (e) {
-                  return <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[0].Procedure}</p>;
+                  return <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[currentRecipeIndex].Procedure}</p>;
                 }
               })()}
               
-              {recommendedRecipes[0].Link && (
+              {recommendedRecipes[currentRecipeIndex].Link && (
                 <a 
-                  href={recommendedRecipes[0].Link} 
+                  href={recommendedRecipes[currentRecipeIndex].Link} 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className={css.recipeLink}
