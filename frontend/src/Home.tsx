@@ -92,7 +92,16 @@ function Home() {
   // Auto-trigger Recipe of the Day on initial page load only if no recipes are saved
   useEffect(() => {
     const hasRecipesStored = localStorage.getItem('lastGeneratedRecipes');
-    if (objects.length > 0 && !hasInitiallyLoadedRef.current && !hasRecipesStored) {
+    const lastUpdateTime = localStorage.getItem('lastRecipeUpdate');
+    const currentTime = new Date().getTime();
+    const ONE_DAY = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+    // Load recipe if:
+    // 1. There are objects AND
+    // 2. Either:
+    //    a. No recipes are stored OR
+    //    b. Last update was more than 24 hours ago
+    if (objects.length > 0 && (!hasRecipesStored || (lastUpdateTime && (currentTime - parseInt(lastUpdateTime)) > ONE_DAY))) {
       hasInitiallyLoadedRef.current = true;
       handleRecipeOfDay();
     }
@@ -519,7 +528,6 @@ function Home() {
         ]
       });
       
-      // Filter recipes by favorites if the switch is on
       const recipesSet = showFavorites 
         ? client(Recipe).where({ id: { $in: Array.from(favorites) } })
         : client(Recipe);
@@ -535,6 +543,7 @@ function Home() {
         const recipes = [result[0]];
         setRecommendedRecipes(recipes);
         localStorage.setItem('lastGeneratedRecipes', JSON.stringify(recipes));
+        localStorage.setItem('lastRecipeUpdate', new Date().getTime().toString());
       }
     } catch (error) {
       console.error('Error generating recipes:', error);
