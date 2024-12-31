@@ -4,7 +4,7 @@ import { Osdk } from "@osdk/client";
 import css from "./Recipes.module.css";
 import client from "./client";
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 9;
 
 function Recipes() {
   const [recipes, setRecipes] = useState<Osdk.Instance<Recipe>[]>([]);
@@ -15,6 +15,10 @@ function Recipes() {
   const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState<'ingredients' | 'procedure'>('ingredients');
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   const [addForm, setAddForm] = useState({
     name: "",
@@ -41,16 +45,45 @@ function Recipes() {
     fetchRecipes();
   }, []);
 
+  useEffect(() => {
+    // Load favorites from localStorage
+    const savedFavorites = localStorage.getItem('recipeFavorites');
+    if (savedFavorites) {
+      setFavorites(new Set(JSON.parse(savedFavorites)));
+    }
+  }, []);
+
+  const toggleFavorite = (e: React.MouseEvent, recipeId: string) => {
+    e.stopPropagation();
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(recipeId)) {
+      newFavorites.delete(recipeId);
+    } else {
+      newFavorites.add(recipeId);
+    }
+    setFavorites(newFavorites);
+    localStorage.setItem('recipeFavorites', JSON.stringify([...newFavorites]));
+  };
+
   const handleEditClick = (recipe: Osdk.Instance<Recipe>) => {
     let parsedIngredients = recipe.ingredients || "";
+    let parsedProcedure = recipe.procedure || "";
     try {
-      // Parse the JSON string and join with newlines for editing
-      const ingredientsArray = JSON.parse(recipe.ingredients || "[]");
-      if (Array.isArray(ingredientsArray)) {
-        parsedIngredients = ingredientsArray.join('\n');
+      // Convert comma-separated ingredients to newlines for editing
+      if (recipe.ingredients) {
+        parsedIngredients = recipe.ingredients
+          .split(',')
+          .map(item => item.trim())
+          .join('\n');
+      }
+
+      // Parse the procedure JSON string and join with newlines for editing
+      const procedureArray = JSON.parse(recipe.procedure || "[]");
+      if (Array.isArray(procedureArray)) {
+        parsedProcedure = procedureArray.join('\n');
       }
     } catch (e) {
-      console.error('Failed to parse ingredients:', e);
+      console.error('Failed to parse recipe data:', e);
     }
 
     setEditingRecipe(recipe);
@@ -58,7 +91,7 @@ function Recipes() {
       name: recipe.name || "",
       link: recipe.link_ || "",
       ingredients: parsedIngredients,
-      procedure: recipe.procedure || "",
+      procedure: parsedProcedure,
     });
   };
 
@@ -66,8 +99,15 @@ function Recipes() {
     e.preventDefault();
     if (!editingRecipe) return;
 
-    // Convert ingredients to array format
-    const ingredientsArray = editForm.ingredients
+    // Convert ingredients to comma-separated string
+    const ingredientsString = editForm.ingredients
+      .split('\n')
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+      .join(', ');
+
+    // Convert procedure to array format
+    const procedureArray = editForm.procedure
       .split('\n')
       .map(item => item.trim())
       .filter(item => item.length > 0);
@@ -78,9 +118,10 @@ function Recipes() {
         {
           Recipe: editingRecipe,
           name: editForm.name,
-          link_: editForm.link || undefined,
-          ingredients: JSON.stringify(ingredientsArray),
-          procedure: editForm.procedure,
+          link: editForm.link || undefined,
+          ingredients: ingredientsString,
+          procedure: `['${procedureArray.join("', '")}']`,
+          cleaned_ingredients: ingredientsString
         },
         {
           $returnEdits: true,
@@ -117,8 +158,15 @@ function Recipes() {
     e.preventDefault();
     setIsSaving(true);
 
-    // Convert ingredients to array format
-    const ingredientsArray = addForm.ingredients
+    // Convert ingredients to comma-separated string
+    const ingredientsString = addForm.ingredients
+      .split('\n')
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+      .join(', ');
+
+    // Convert procedure to array format
+    const procedureArray = addForm.procedure
       .split('\n')
       .map(item => item.trim())
       .filter(item => item.length > 0);
@@ -127,9 +175,10 @@ function Recipes() {
       const result = await client(createRecipe).applyAction(
         {
           name: addForm.name,
-          link_: addForm.link || undefined,
-          ingredients: JSON.stringify(ingredientsArray),
-          procedure: addForm.procedure,
+          link: addForm.link || undefined,
+          ingredients: ingredientsString,
+          procedure: `['${procedureArray.join("', '")}']`,
+          cleaned_ingredients: ingredientsString
         },
         {
           $returnEdits: true,
@@ -153,6 +202,12 @@ function Recipes() {
 
   const handleDeleteClick = async (e: React.MouseEvent, recipe: Osdk.Instance<Recipe>) => {
     e.stopPropagation();
+    
+    // Show confirmation dialog
+    if (!window.confirm('Are you sure you want to delete this recipe?')) {
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -178,6 +233,55 @@ function Recipes() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    // Show confirmation dialog
+    if (!window.confirm(`Are you sure you want to delete ${selectedItems.size} recipe${selectedItems.size > 1 ? 's' : ''}?`)) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Delete items one by one
+      for (const itemId of selectedItems) {
+        const recipe = recipes.find(obj => obj.$primaryKey === itemId);
+        if (recipe) {
+          await client(deleteRecipe).applyAction(
+            {
+              Recipe: recipe,
+            },
+            {
+              $returnEdits: true,
+            }
+          );
+        }
+      }
+
+      // Refresh the list
+      const items: Osdk.Instance<Recipe>[] = [];
+      for await (const obj of client(Recipe).asyncIter()) {
+        items.push(obj);
+      }
+      setRecipes(items);
+      setSelectedItems(new Set());
+      setIsSelecting(false);
+    } catch (error) {
+      console.error('Failed to delete recipes:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const toggleItemSelection = (e: React.MouseEvent | React.ChangeEvent, itemId: string) => {
+    e.stopPropagation();
+    const newSelection = new Set(selectedItems);
+    if (newSelection.has(itemId)) {
+      newSelection.delete(itemId);
+    } else {
+      newSelection.add(itemId);
+    }
+    setSelectedItems(newSelection);
   };
 
   const renderField = (label: string, value: any, isInModal: boolean = false) => {
@@ -214,11 +318,35 @@ function Recipes() {
   };
 
   const renderRecipeCard = (recipe: Osdk.Instance<Recipe>, isModal: boolean = false) => (
-    <div className={css.recipeCardContent}>
+    <div 
+      className={css.recipeCardContent}
+      onClick={(e) => {
+        if (isSelecting && !isModal) {
+          toggleItemSelection(e, recipe.$primaryKey);
+        }
+      }}
+    >
       <div className={css.recipeHeader}>
         <div className={css.recipeHeaderLeft}>
           {recipe.name && (
-            <h3>{recipe.name}</h3>
+            <div className={css.titleRow}>
+              {isSelecting && !isModal && (
+                <input
+                  type="checkbox"
+                  checked={selectedItems.has(recipe.$primaryKey)}
+                  onChange={(e) => toggleItemSelection(e, recipe.$primaryKey)}
+                  className={css.selectCheckbox}
+                />
+              )}
+              <h3>{recipe.name}</h3>
+              <button
+                className={`${css.starButton} ${favorites.has(recipe.$primaryKey) ? css.starred : ''}`}
+                onClick={(e) => toggleFavorite(e, recipe.$primaryKey)}
+                title={favorites.has(recipe.$primaryKey) ? "Remove from favorites" : "Add to favorites"}
+              >
+                {favorites.has(recipe.$primaryKey) ? "★" : "☆"}
+              </button>
+            </div>
           )}
         </div>
         {isModal && (
@@ -243,14 +371,29 @@ function Recipes() {
           </div>
         )}
       </div>
-      {recipe.link_ && renderField("Link", recipe.link_)}
-      {recipe.cleanedIngredients && renderField("Ingredients", recipe.cleanedIngredients)}
+      {isModal && recipe.link_ && renderField("Link", recipe.link_)}
+      {recipe.cleanedIngredients && (
+        isModal ? (
+          renderField("Ingredients", recipe.cleanedIngredients)
+        ) : (
+          <ul className={css.cardIngredients}>
+            {recipe.cleanedIngredients
+              .split(',')
+              .map((ingredient, index) => (
+                <li key={index} className={css.cardIngredient}>{ingredient.trim()}</li>
+              ))}
+          </ul>
+        )
+      )}
       {isModal && recipe.procedure && renderField("Procedure", recipe.procedure)}
     </div>
   );
 
   const filteredRecipes = recipes
-    .filter(recipe => recipe.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+    .filter(recipe => {
+      const matchesSearch = recipe.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false;
+      return showFavorites ? matchesSearch && favorites.has(recipe.$primaryKey) : matchesSearch;
+    })
     .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 
   const totalPages = Math.ceil(filteredRecipes.length / ITEMS_PER_PAGE);
@@ -273,11 +416,17 @@ function Recipes() {
     <div className={css.modalContent} onClick={e => e.stopPropagation()}>
       <div className={css.recipeHeader}>
         <div className={css.recipeHeaderLeft}>
-          <h3>{recipe.name}</h3>
-          {recipe.link_ && (
-            <a href={recipe.link_} target="_blank" rel="noopener noreferrer" className={css.link}>
-              View Recipe Link
-            </a>
+          {recipe.name && (
+            <div className={css.titleRow}>
+              <h3>{recipe.name}</h3>
+              <button
+                className={`${css.starButton} ${favorites.has(recipe.$primaryKey) ? css.starred : ''}`}
+                onClick={(e) => toggleFavorite(e, recipe.$primaryKey)}
+                title={favorites.has(recipe.$primaryKey) ? "Remove from favorites" : "Add to favorites"}
+              >
+                {favorites.has(recipe.$primaryKey) ? "★" : "☆"}
+              </button>
+            </div>
           )}
         </div>
         <div className={css.buttonGroup}>
@@ -301,6 +450,14 @@ function Recipes() {
         </div>
       </div>
 
+      {recipe.link_ && (
+        <div className={css.modalLink}>
+          <a href={recipe.link_} target="_blank" rel="noopener noreferrer" className={css.link}>
+            View Recipe Link
+          </a>
+        </div>
+      )}
+
       <div className={css.tabs}>
         <button
           className={`${css.tab} ${activeTab === 'ingredients' ? css.activeTab : ''}`}
@@ -321,10 +478,9 @@ function Recipes() {
           <div>
             <ul className={css.modalIngredientsList}>
               {recipe.cleanedIngredients && recipe.cleanedIngredients
-                .replace(/[\[\]"]/g, '')
                 .split(',')
                 .map((ingredient, index) => (
-                  <li key={index}>{ingredient.trim().replace(/'/g, '')}</li>
+                  <li key={index}>{ingredient.trim()}</li>
                 ))}
             </ul>
           </div>
@@ -333,9 +489,10 @@ function Recipes() {
           <div>
             <ol className={css.modalProcedureList}>
               {recipe.procedure && recipe.procedure
-                .split("',")
+                .split("', '")
+                .filter(step => step.trim().length > 0)
                 .map((step, index) => (
-                  <li key={index}>{step.trim().replace(/'/g, '').replace(/[\[\]"']/g, '')}</li>
+                  <li key={index}>{step.trim().replace("['", "").replace("']", "")}</li>
                 ))}
             </ol>
           </div>
@@ -344,14 +501,57 @@ function Recipes() {
     </div>
   );
 
+  const handleSelectAll = () => {
+    const newSelection = new Set(filteredRecipes.map(recipe => recipe.$primaryKey));
+    setSelectedItems(newSelection);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedItems(new Set());
+  };
+
   return (
     <div className={css.dashboardContainer}>
       <div className={css.dashboardHeader}>
         <h1>My Recipes 📖</h1>
         <div className={css.headerButtons}>
-          <button className={css.addButton} onClick={handleAddClick}>
-            Add Recipe
+          <button 
+            className={`${css.filterButton} ${showFavorites ? css.active : ''}`}
+            onClick={() => setShowFavorites(!showFavorites)}
+          >
+            {showFavorites ? "★ Favorites" : "☆ Show Favorites"}
           </button>
+          <button
+            className={`${css.selectButton} ${isSelecting ? css.active : ''}`}
+            onClick={() => {
+              setIsSelecting(!isSelecting);
+              setSelectedItems(new Set());
+            }}
+          >
+            {isSelecting ? "Cancel Selection" : "Select"}
+          </button>
+          {isSelecting && (
+            <>
+              <button
+                className={css.selectAllButton}
+                onClick={selectedItems.size === filteredRecipes.length ? handleDeselectAll : handleSelectAll}
+              >
+                {selectedItems.size === filteredRecipes.length ? 'Deselect All' : 'Select All'}
+              </button>
+              <button
+                className={css.bulkDeleteButton}
+                onClick={handleBulkDelete}
+                disabled={selectedItems.size === 0 || isSaving}
+              >
+                {isSaving ? "Deleting..." : `Delete (${selectedItems.size})`}
+              </button>
+            </>
+          )}
+          {!isSelecting && (
+            <button className={css.addButton} onClick={handleAddClick}>
+              Add Recipe
+            </button>
+          )}
         </div>
       </div>
       <div className={css.searchContainer}>
@@ -375,7 +575,11 @@ function Recipes() {
                 <div
                   key={recipe.$primaryKey}
                   className={css.recipeCard}
-                  onClick={() => setSelectedRecipe(recipe)}
+                  onClick={() => {
+                    if (!isSelecting) {
+                      setSelectedRecipe(recipe);
+                    }
+                  }}
                 >
                   {renderRecipeCard(recipe)}
                 </div>
@@ -453,6 +657,7 @@ function Recipes() {
                   onChange={e => setEditForm({...editForm, procedure: e.target.value})}
                   disabled={isSaving}
                   className={css.textarea}
+                  placeholder="Enter each step on a new line:&#10;1. Mix flour and salt&#10;2. Add eggs and milk&#10;3. Whisk until smooth"
                 />
               </div>
               <div className={css.formButtons}>
@@ -525,6 +730,7 @@ function Recipes() {
                   disabled={isSaving}
                   className={css.textarea}
                   required
+                  placeholder="Enter each step on a new line:&#10;1. Mix flour and salt&#10;2. Add eggs and milk&#10;3. Whisk until smooth"
                 />
               </div>
               <div className={css.formButtons}>

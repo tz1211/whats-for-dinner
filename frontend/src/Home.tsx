@@ -232,6 +232,12 @@ function Home() {
 
   const handleDeleteClick = async (e: React.MouseEvent, item: Osdk.Instance<FridgeItem>) => {
     e.stopPropagation();
+
+    // Show confirmation dialog
+    if (!window.confirm('Are you sure you want to delete this item?')) {
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -250,7 +256,7 @@ function Home() {
           items.push(obj);
         }
         setObjects(items);
-        setSelectedItem(null); // Close the modal
+        setSelectedItem(null);
       }
     } catch (error) {
       console.error('Failed to delete item:', error);
@@ -336,6 +342,11 @@ function Home() {
   };
 
   const handleBulkDelete = async () => {
+    // Show confirmation dialog
+    if (!window.confirm(`Are you sure you want to delete ${selectedItems.size} item${selectedItems.size > 1 ? 's' : ''}?`)) {
+      return;
+    }
+
     setIsSaving(true);
     try {
       // Delete items one by one
@@ -354,11 +365,11 @@ function Home() {
       }
 
       // Refresh the list
-      const items: Osdk.Instance<FridgeItem>[] = [];
+      const newItems: Osdk.Instance<FridgeItem>[] = [];
       for await (const obj of client(FridgeItem).asyncIter()) {
-        items.push(obj);
+        newItems.push(obj);
       }
-      setObjects(items);
+      setObjects(newItems);
       setSelectedItems(new Set());
       setIsSelecting(false);
     } catch (error) {
