@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FridgeItem, Recipe, addItem, editItem, deleteItem, recipeRetriever } from "@whatsfordinner/sdk"; 
 import { Osdk } from "@osdk/client";
 import css from "./Home.module.css";
@@ -41,8 +41,10 @@ function Home() {
   const [expiryFilters, setExpiryFilters] = useState<Set<string>>(new Set(['all']));
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [recommendedRecipes, setRecommendedRecipes] = useState<RecipeResult[]>([]);
-  const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
   const [userPreference, setUserPreference] = useState("");
+  const [isLoadingRecipeOfDay, setIsLoadingRecipeOfDay] = useState(false);
+  const [isLoadingSelectedRecipe, setIsLoadingSelectedRecipe] = useState(false);
+  const hasInitiallyLoadedRef = useRef(false);
 
   // Set document title
   useEffect(() => {
@@ -62,10 +64,8 @@ function Home() {
 
   // Auto-trigger Recipe of the Day on initial page load only
   useEffect(() => {
-    const hasInitiallyLoaded = objects.length > 0;
-    const isFirstLoad = !recommendedRecipes.length;
-    
-    if (hasInitiallyLoaded && isFirstLoad) {
+    if (objects.length > 0 && !hasInitiallyLoadedRef.current) {
+      hasInitiallyLoadedRef.current = true;
       handleRecipeOfDay();
     }
   }, [objects]);
@@ -480,7 +480,7 @@ function Home() {
   };
 
   const handleRecipeOfDay = async () => {
-    setIsLoadingRecipes(true);
+    setIsLoadingRecipeOfDay(true);
     setRecommendedRecipes([]);
 
     try {
@@ -499,14 +499,41 @@ function Home() {
         userPreference: userPreference.trim() || "None"
       });
       
-      // The result is already an array of recipes
       if (Array.isArray(result) && result.length > 0) {
         setRecommendedRecipes([result[0]]);
       }
     } catch (error) {
       console.error('Error generating recipes:', error);
     } finally {
-      setIsLoadingRecipes(false);
+      setIsLoadingRecipeOfDay(false);
+    }
+  };
+
+  const handleGenerateForSelected = async () => {
+    setIsLoadingSelectedRecipe(true);
+    setRecommendedRecipes([]);
+
+    try {
+      // Create a set of selected items
+      const selectedItemsSet = client(FridgeItem).where({
+        id: { $in: Array.from(selectedItems) }
+      });
+      const recipesSet = client(Recipe);
+
+      const result = await client(recipeRetriever).executeFunction({
+        items: selectedItemsSet,
+        topSearch: 10,
+        recipes: recipesSet,
+        userPreference: userPreference.trim() || "None"
+      });
+      
+      if (Array.isArray(result) && result.length > 0) {
+        setRecommendedRecipes([result[0]]);
+      }
+    } catch (error) {
+      console.error('Error generating recipes for selected items:', error);
+    } finally {
+      setIsLoadingSelectedRecipe(false);
     }
   };
 
@@ -641,7 +668,7 @@ function Home() {
         }}>
           <input
             type="text"
-            placeholder="Add recipe preference here if applicable"
+            placeholder="Add preference here if applicable"
             value={userPreference}
             onChange={(e) => setUserPreference(e.target.value)}
             className={css.searchInput}
@@ -655,9 +682,9 @@ function Home() {
           <button 
             className={css.recipeOfDayButton} 
             onClick={handleRecipeOfDay}
-            disabled={isLoadingRecipes}
+            disabled={isLoadingRecipeOfDay || isLoadingSelectedRecipe}
           >
-            {isLoadingRecipes ? (
+            {isLoadingRecipeOfDay ? (
               <>
                 <div className={css.spinner}></div>
                 Generating...
@@ -670,13 +697,26 @@ function Home() {
             )}
           </button>
           {isSelecting && selectedItems.size > 0 && (
-            <button className={css.recipeOfDayButton}>
-              <span style={{ fontSize: '20px' }}>✨</span>
-              Generate Recipes
+            <button 
+              className={css.recipeOfDayButton}
+              onClick={handleGenerateForSelected}
+              disabled={isLoadingRecipeOfDay || isLoadingSelectedRecipe}
+            >
+              {isLoadingSelectedRecipe ? (
+                <>
+                  <div className={css.spinner}></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: '20px' }}>✨</span>
+                  Generate Recipes
+                </>
+              )}
             </button>
           )}
         </div>
-        {!isLoadingRecipes && recommendedRecipes.length > 0 && (
+        {!isLoadingRecipeOfDay && recommendedRecipes.length > 0 && (
           <div className={css.recommendedRecipesList}>
             <div className={css.shoppingList}>
               <h4>Shopping List:</h4>
