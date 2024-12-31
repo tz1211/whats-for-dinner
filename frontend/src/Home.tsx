@@ -458,18 +458,20 @@ function Home() {
       <div className={css.dashboardHeader}>
         <h1>My Fridge Items 🥬</h1>
         <div className={css.headerButtons}>
-          <button className={css.addButton} onClick={handleAddClick}>
-            Add Item
-          </button>
           <button
-            className={css.selectButton}
+            className={`${css.selectButton} ${isSelecting ? css.active : ''}`}
             onClick={() => {
               setIsSelecting(!isSelecting);
               setSelectedItems(new Set());
             }}
           >
-            {isSelecting ? 'Cancel Selection' : 'Select Items'}
+            {isSelecting ? "Cancel Selection" : "Select"}
           </button>
+          {!isSelecting && (
+            <button className={css.addButton} onClick={handleAddClick}>
+              Add Item
+            </button>
+          )}
           {isSelecting && (
             <>
               <button
@@ -478,20 +480,13 @@ function Home() {
               >
                 {selectedItems.size === sortedAndFilteredItems.length ? 'Deselect All' : 'Select All'}
               </button>
-              {selectedItems.size > 0 && (
-                <button
-                  className={css.bulkDeleteButton}
-                  onClick={handleBulkDelete}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <>
-                      <div className={css.spinner}></div>
-                      Deleting...
-                    </>
-                  ) : 'Delete Selected'}
-                </button>
-              )}
+              <button
+                className={css.bulkDeleteButton}
+                onClick={handleBulkDelete}
+                disabled={selectedItems.size === 0 || isSaving}
+              >
+                {isSaving ? "Deleting..." : `Delete (${selectedItems.size})`}
+              </button>
             </>
           )}
         </div>

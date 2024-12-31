@@ -399,10 +399,10 @@ h3.good {
   gap: 8px;
 }
 
-.selectButton, .addButton {
-  background: #2a4365;
+.selectButton {
+  background: #333;
   color: #ffffff;
-  border: 1px solid #2c5282;
+  border: 1px solid #444;
   border-radius: 4px;
   padding: 8px 14px;
   font-size: 16px;
@@ -411,20 +411,48 @@ h3.good {
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 120px;
   justify-content: center;
   height: 38px;
 }
 
-.selectButton:hover, .addButton:hover {
-  background: #2c5282;
-  border-color: #2b6cb0;
+.selectButton:hover {
+  background: #444;
+  border-color: #555;
 }
 
-.selectButton:active, .addButton:active {
-  background: #2a4365;
-  transform: translateY(1px);
+.selectButton.active {
+  background: #333;
+  border-color: #444;
+}
+
+.selectButton.active:hover {
+  background: #444;
+  border-color: #555;
+}
+
+.selectAllButton {
+  background: #333;
+  color: #ffffff;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 120px;
+  justify-content: center;
+  height: 38px;
+}
+
+.selectAllButton:hover {
+  background: #444;
+  border-color: #555;
 }
 
 .bulkDeleteButton {
@@ -439,7 +467,7 @@ h3.good {
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 120px;
   justify-content: center;
   height: 38px;
@@ -547,6 +575,7 @@ h3.good {
   width: auto;
   margin: 0;
   cursor: pointer;
+  margin-right: 8px;
 }
 
 .checkboxLabel:hover {
@@ -675,7 +704,7 @@ h3.good {
   cursor: pointer;
 }
 
-.selectAllButton {
+.addButton {
   background: #2a4365;
   color: #ffffff;
   border: 1px solid #2c5282;
@@ -693,12 +722,12 @@ h3.good {
   height: 38px;
 }
 
-.selectAllButton:hover {
+.addButton:hover {
   background: #2c5282;
   border-color: #2b6cb0;
 }
 
-.selectAllButton:active {
+.addButton:active {
   background: #2a4365;
   transform: translateY(1px);
 }
