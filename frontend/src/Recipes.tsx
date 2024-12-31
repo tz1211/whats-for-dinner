@@ -519,7 +519,7 @@ function Recipes() {
             className={`${css.filterButton} ${showFavorites ? css.active : ''}`}
             onClick={() => setShowFavorites(!showFavorites)}
           >
-            {showFavorites ? "★ Favorites" : "☆ Show Favorites"}
+            {showFavorites ? "★ Favourites" : "☆ Show Favourites"}
           </button>
           <button
             className={`${css.selectButton} ${isSelecting ? css.active : ''}`}

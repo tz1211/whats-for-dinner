@@ -42,6 +42,8 @@ function Home() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [recommendedRecipes, setRecommendedRecipes] = useState<RecipeResult[]>([]);
   const [userPreference, setUserPreference] = useState("");
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [isLoadingRecipeOfDay, setIsLoadingRecipeOfDay] = useState(false);
   const [isLoadingSelectedRecipe, setIsLoadingSelectedRecipe] = useState(false);
   const [currentRecipeIndex, setCurrentRecipeIndex] = useState(0);
@@ -492,7 +494,11 @@ function Home() {
           { daysUntilExpiration: { $lte: 2 } }
         ]
       });
-      const recipesSet = client(Recipe);
+      
+      // Filter recipes by favorites if the switch is on
+      const recipesSet = showFavorites 
+        ? client(Recipe).where({ id: { $in: Array.from(favorites) } })
+        : client(Recipe);
 
       const result = await client(recipeRetriever).executeFunction({
         items: itemsSet,
@@ -520,7 +526,11 @@ function Home() {
       const selectedItemsSet = client(FridgeItem).where({
         id: { $in: Array.from(selectedItems) }
       });
-      const recipesSet = client(Recipe);
+      
+      // Filter recipes by favorites if the switch is on
+      const recipesSet = showFavorites 
+        ? client(Recipe).where({ id: { $in: Array.from(favorites) } })
+        : client(Recipe);
 
       const result = await client(recipeRetriever).executeFunction({
         items: selectedItemsSet,
@@ -546,6 +556,14 @@ function Home() {
   const handlePrevRecipe = () => {
     setCurrentRecipeIndex((prev) => (prev - 1 + recommendedRecipes.length) % recommendedRecipes.length);
   };
+
+  // Load favorites from localStorage
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('recipeFavorites');
+    if (savedFavorites) {
+      setFavorites(new Set(JSON.parse(savedFavorites)));
+    }
+  }, []);
 
   return (
     <>
@@ -674,7 +692,10 @@ function Home() {
         <div style={{ 
           padding: '0 24px',
           marginTop: '24px',
-          marginBottom: '24px'
+          marginBottom: '24px',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center'
         }}>
           <input
             type="text"
@@ -683,10 +704,24 @@ function Home() {
             onChange={(e) => setUserPreference(e.target.value)}
             className={css.searchInput}
             style={{ 
-              width: '100%',
+              flex: 1,
               boxSizing: 'border-box'
             }}
           />
+          <div className={css.switchContainer}>
+            <label className={css.switchLabel} style={{ opacity: favorites.size === 0 ? 0.5 : 1 }}>
+              <span>Favourites</span>
+              <div className={css.switch}>
+                <input
+                  type="checkbox"
+                  checked={showFavorites}
+                  onChange={(e) => setShowFavorites(e.target.checked)}
+                  disabled={favorites.size === 0}
+                />
+                <span className={css.slider}></span>
+              </div>
+            </label>
+          </div>
         </div>
         <div className={css.searchRow} style={{ marginBottom: '24px', gap: '12px', justifyContent: 'center' }}>
           <button 
