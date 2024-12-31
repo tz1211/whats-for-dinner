@@ -66,9 +66,33 @@ function Home() {
     fetchObjects();
   }, []);
 
-  // Auto-trigger Recipe of the Day on initial page load only
+  // Load favorites, saved recipes, and preferences from localStorage
   useEffect(() => {
-    if (objects.length > 0 && !hasInitiallyLoadedRef.current) {
+    const savedFavorites = localStorage.getItem('recipeFavorites');
+    if (savedFavorites) {
+      setFavorites(new Set(JSON.parse(savedFavorites)));
+    }
+
+    const savedRecipes = localStorage.getItem('lastGeneratedRecipes');
+    if (savedRecipes) {
+      setRecommendedRecipes(JSON.parse(savedRecipes));
+    }
+
+    const savedPreference = localStorage.getItem('userPreference');
+    if (savedPreference) {
+      setUserPreference(savedPreference);
+    }
+  }, []);
+
+  // Update preferences in localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('userPreference', userPreference);
+  }, [userPreference]);
+
+  // Auto-trigger Recipe of the Day on initial page load only if no recipes are saved
+  useEffect(() => {
+    const hasRecipesStored = localStorage.getItem('lastGeneratedRecipes');
+    if (objects.length > 0 && !hasInitiallyLoadedRef.current && !hasRecipesStored) {
       hasInitiallyLoadedRef.current = true;
       handleRecipeOfDay();
     }
@@ -508,7 +532,9 @@ function Home() {
       });
       
       if (Array.isArray(result) && result.length > 0) {
-        setRecommendedRecipes([result[0]]);
+        const recipes = [result[0]];
+        setRecommendedRecipes(recipes);
+        localStorage.setItem('lastGeneratedRecipes', JSON.stringify(recipes));
       }
     } catch (error) {
       console.error('Error generating recipes:', error);
@@ -540,7 +566,9 @@ function Home() {
       });
       
       if (Array.isArray(result) && result.length > 0) {
-        setRecommendedRecipes(result.slice(0, 3));
+        const recipes = result.slice(0, 3);
+        setRecommendedRecipes(recipes);
+        localStorage.setItem('lastGeneratedRecipes', JSON.stringify(recipes));
       }
     } catch (error) {
       console.error('Error generating recipes for selected items:', error);
@@ -556,14 +584,6 @@ function Home() {
   const handlePrevRecipe = () => {
     setCurrentRecipeIndex((prev) => (prev - 1 + recommendedRecipes.length) % recommendedRecipes.length);
   };
-
-  // Load favorites from localStorage
-  useEffect(() => {
-    const savedFavorites = localStorage.getItem('recipeFavorites');
-    if (savedFavorites) {
-      setFavorites(new Set(JSON.parse(savedFavorites)));
-    }
-  }, []);
 
   return (
     <>
