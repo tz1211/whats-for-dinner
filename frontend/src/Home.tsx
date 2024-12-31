@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FridgeItem, addItem, editItem, deleteItem } from "@whatsfordinner/sdk"; 
+import { FridgeItem, Recipe, addItem, editItem, deleteItem, recipeRetriever } from "@whatsfordinner/sdk"; 
 import { Osdk } from "@osdk/client";
 import css from "./Home.module.css";
 import client from "./client";
@@ -454,123 +454,141 @@ function Home() {
   };
 
   return (
-    <div className={css.dashboardContainer}>
-      <div className={css.dashboardHeader}>
-        <h1>My Fridge Items 🥬</h1>
-        <div className={css.headerButtons}>
-          <button
-            className={`${css.selectButton} ${isSelecting ? css.active : ''}`}
-            onClick={() => {
-              setIsSelecting(!isSelecting);
-              setSelectedItems(new Set());
-            }}
-          >
-            {isSelecting ? "Cancel Selection" : "Select"}
-          </button>
-          {!isSelecting && (
-            <button className={css.addButton} onClick={handleAddClick}>
-              Add Item
-            </button>
-          )}
-          {isSelecting && (
-            <>
-              <button
-                className={css.selectAllButton}
-                onClick={selectedItems.size === sortedAndFilteredItems.length ? handleDeselectAll : handleSelectAll}
-              >
-                {selectedItems.size === sortedAndFilteredItems.length ? 'Deselect All' : 'Select All'}
-              </button>
-              <button
-                className={css.bulkDeleteButton}
-                onClick={handleBulkDelete}
-                disabled={selectedItems.size === 0 || isSaving}
-              >
-                {isSaving ? "Deleting..." : `Delete (${selectedItems.size})`}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-      <div className={css.searchContainer}>
-        <div className={css.searchRow}>
-          <input
-            type="text"
-            placeholder="Search items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className={css.searchInput}
-          />
-          <div className={css.filterDropdown}>
-            <button 
-              className={css.filterButton} 
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsFilterOpen(!isFilterOpen);
+    <>
+      <div className={css.dashboardContainer}>
+        <div className={css.dashboardHeader}>
+          <h1>My Fridge Items 🥬</h1>
+          <div className={css.headerButtons}>
+            <button
+              className={`${css.selectButton} ${isSelecting ? css.active : ''}`}
+              onClick={() => {
+                setIsSelecting(!isSelecting);
+                setSelectedItems(new Set());
               }}
             >
-              Filter 
+              {isSelecting ? "Cancel Selection" : "Select"}
             </button>
-            {isFilterOpen && (
-              <div className={css.filterMenu} onClick={e => e.stopPropagation()}>
-                <label className={css.filterOption}>
-                  <input
-                    type="checkbox"
-                    checked={expiryFilters.has('all')}
-                    onChange={() => toggleFilter('all')}
-                  />
-                  All Items
-                </label>
-                <label className={css.filterOption}>
-                  <input
-                    type="checkbox"
-                    checked={expiryFilters.has('expired')}
-                    onChange={() => toggleFilter('expired')}
-                  />
-                  Expired
-                </label>
-                <label className={css.filterOption}>
-                  <input
-                    type="checkbox"
-                    checked={expiryFilters.has('nearExpiry')}
-                    onChange={() => toggleFilter('nearExpiry')}
-                  />
-                  Near Expiry
-                </label>
-                <label className={css.filterOption}>
-                  <input
-                    type="checkbox"
-                    checked={expiryFilters.has('good')}
-                    onChange={() => toggleFilter('good')}
-                  />
-                  Good
-                </label>
-              </div>
+            {!isSelecting && (
+              <button className={css.addButton} onClick={handleAddClick}>
+                Add Item
+              </button>
+            )}
+            {isSelecting && (
+              <>
+                <button
+                  className={css.selectAllButton}
+                  onClick={selectedItems.size === sortedAndFilteredItems.length ? handleDeselectAll : handleSelectAll}
+                >
+                  {selectedItems.size === sortedAndFilteredItems.length ? 'Deselect All' : 'Select All'}
+                </button>
+                <button
+                  className={css.bulkDeleteButton}
+                  onClick={handleBulkDelete}
+                  disabled={selectedItems.size === 0 || isSaving}
+                >
+                  {isSaving ? "Deleting..." : `Delete (${selectedItems.size})`}
+                </button>
+              </>
             )}
           </div>
         </div>
-      </div>
-      <div className={css.dashboard}>
-        {sortedAndFilteredItems.length === 0 ? (
-          <p>No items found...</p>
-        ) : (
-          <div className={css.itemsGrid}>
-            {sortedAndFilteredItems.map((item) => (
-              <div
-                key={item.$primaryKey}
-                className={`${css.itemCard} ${isSelecting && selectedItems.has(item.$primaryKey) ? css.selected : ''}`}
-                onClick={() => {
-                  if (isSelecting) {
-                    toggleItemSelection({ stopPropagation: () => {} } as React.MouseEvent, item.$primaryKey);
-                  } else {
-                    setSelectedItem(item);
-                  }
+        <div className={css.searchContainer}>
+          <div className={css.searchRow}>
+            <input
+              type="text"
+              placeholder="Search items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={css.searchInput}
+            />
+            <div className={css.filterDropdown}>
+              <button 
+                className={css.filterButton} 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsFilterOpen(!isFilterOpen);
                 }}
               >
-                {renderItemCard(item)}
-              </div>
-            ))}
+                Filter 
+              </button>
+              {isFilterOpen && (
+                <div className={css.filterMenu} onClick={e => e.stopPropagation()}>
+                  <label className={css.filterOption}>
+                    <input
+                      type="checkbox"
+                      checked={expiryFilters.has('all')}
+                      onChange={() => toggleFilter('all')}
+                    />
+                    All Items
+                  </label>
+                  <label className={css.filterOption}>
+                    <input
+                      type="checkbox"
+                      checked={expiryFilters.has('expired')}
+                      onChange={() => toggleFilter('expired')}
+                    />
+                    Expired
+                  </label>
+                  <label className={css.filterOption}>
+                    <input
+                      type="checkbox"
+                      checked={expiryFilters.has('nearExpiry')}
+                      onChange={() => toggleFilter('nearExpiry')}
+                    />
+                    Near Expiry
+                  </label>
+                  <label className={css.filterOption}>
+                    <input
+                      type="checkbox"
+                      checked={expiryFilters.has('good')}
+                      onChange={() => toggleFilter('good')}
+                    />
+                    Good
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
+        <div className={css.dashboard}>
+          {sortedAndFilteredItems.length === 0 ? (
+            <p>No items found...</p>
+          ) : (
+            <div className={css.itemsGrid}>
+              {sortedAndFilteredItems.map((item) => (
+                <div
+                  key={item.$primaryKey}
+                  className={`${css.itemCard} ${isSelecting && selectedItems.has(item.$primaryKey) ? css.selected : ''}`}
+                  onClick={() => {
+                    if (isSelecting) {
+                      toggleItemSelection({ stopPropagation: () => {} } as React.MouseEvent, item.$primaryKey);
+                    } else {
+                      setSelectedItem(item);
+                    }
+                  }}
+                >
+                  {renderItemCard(item)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={css.recommendedSection}>
+        <h2 style={{ textAlign: 'center' }}>Recommended Recipes 📄</h2>
+        <div className={css.searchRow} style={{ marginBottom: '16px', gap: '12px', justifyContent: 'center' }}>
+          <button className={css.recipeOfDayButton}>
+            <span style={{ fontSize: '20px' }}>✨</span>
+            Recipe of the Day
+          </button>
+          {isSelecting && selectedItems.size > 0 && (
+            <button className={css.recipeOfDayButton}>
+              <span style={{ fontSize: '20px' }}>✨</span>
+              Generate Recipes
+            </button>
+          )}
+        </div>
       </div>
 
       {selectedItem && (
@@ -731,7 +749,7 @@ function Home() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

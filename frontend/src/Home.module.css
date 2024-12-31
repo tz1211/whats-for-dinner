@@ -9,13 +9,14 @@
 .dashboardContainer {
   display: flex;
   flex-direction: column;
-  width: 100%;
+  width: 70%;
   padding: 16px;
   background: #1a1a1a;
   color: #ffffff;
   box-sizing: border-box;
   overflow: hidden;
-  height: calc(100vh - 48px); /* Subtract header height */
+  height: calc(100vh - 48px);
+  border-right: 1px solid #333;
 }
 
 .dashboardContainer h1 {
@@ -388,7 +389,7 @@ h3.good {
 .dashboardHeader h1 {
   margin: 0;
   color: #ffffff;
-  font-size: 24px;
+  font-size: 32px;
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -729,5 +730,73 @@ h3.good {
 
 .addButton:active {
   background: #2a4365;
+  transform: translateY(1px);
+}
+
+.recommendedSection {
+  position: fixed;
+  top: 10%;
+  right: 0;
+  width: 30%;
+  height: 100vh;
+  padding: 0 16px 16px 16px;
+  background: #1a1a1a;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.recommendedSection h2 {
+  color: #ffffff;
+  font-size: 20px;
+  margin: 0 0 16px 0;
+  padding-top: 16px;
+}
+
+.recommendedRecipe {
+  background: #242424;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid #333;
+}
+
+.recommendedRecipe h3 {
+  color: #ffffff;
+  font-size: 16px;
+  margin: 0 0 8px 0;
+}
+
+.recommendedRecipe p {
+  color: #b0b0b0;
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+.recipeOfDayButton {
+  background: #6b46c1;
+  color: #ffffff;
+  border: 1px solid #553c9a;
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+  justify-content: center;
+  height: 38px;
+  margin-top: 16px;
+}
+
+.recipeOfDayButton:hover {
+  background: #553c9a;
+  border-color: #44337a;
+}
+
+.recipeOfDayButton:active {
+  background: #44337a;
   transform: translateY(1px);
 }
