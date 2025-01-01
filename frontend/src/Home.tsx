@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { FridgeItem, Recipe, addItem, editItem, deleteItem, recipeRetriever } from "@whatsfordinner/sdk"; 
+import { FridgeItem, 
+          Recipe, 
+          addItem, 
+          editItem, 
+          deleteItem, 
+          recipeRetriever, 
+          ingredientsRecommender } from "@whatsfordinner/sdk"; 
 import { Osdk } from "@osdk/client";
 import css from "./Home.module.css";
 import client from "./client";
@@ -10,6 +16,11 @@ interface RecipeResult {
   'Items to Buy': string;
   Link: string;
   Procedure: string;
+}
+
+interface IngredientRecommendation {
+  name: string;
+  num_appearance: number;
 }
 
 function Home() {
@@ -48,6 +59,8 @@ function Home() {
   const [isLoadingSelectedRecipe, setIsLoadingSelectedRecipe] = useState(false);
   const [currentRecipeIndex, setCurrentRecipeIndex] = useState(0);
   const [showNavButtons, setShowNavButtons] = useState(false);
+  const [recommendedIngredients, setRecommendedIngredients] = useState<IngredientRecommendation[]>([]);
+  const [isLoadingIngredients, setIsLoadingIngredients] = useState(false);
   const hasInitiallyLoadedRef = useRef(false);
 
   // Set document title
@@ -597,6 +610,27 @@ function Home() {
     setCurrentRecipeIndex((prev) => (prev - 1 + recommendedRecipes.length) % recommendedRecipes.length);
   };
 
+  const handleIngredientsRecommendation = async () => {
+    setIsLoadingIngredients(true);
+    try {
+      const itemsSet = client(FridgeItem).where({});
+      const recipesSet = client(Recipe).where({ id: { $in: Array.from(favorites) } })
+
+      const result = await client(ingredientsRecommender).executeFunction({
+        fridgeItem: itemsSet,
+        recipe: recipesSet
+      });
+      
+      if (Array.isArray(result)) {
+        setRecommendedIngredients(result);
+      }
+    } catch (error) {
+      console.error('Error getting ingredient recommendations:', error);
+    } finally {
+      setIsLoadingIngredients(false);
+    }
+  };
+
   return (
     <>
       <div className={css.dashboardContainer}>
@@ -692,13 +726,91 @@ function Home() {
                 </div>
               )}
             </div>
+            <button 
+              className={css.recipeOfDayButton}
+              onClick={handleIngredientsRecommendation}
+              disabled={isLoadingIngredients}
+            >
+              {isLoadingIngredients ? (
+                <>
+                  <div className={css.spinner}></div>
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: '20px' }}>✨</span>
+                  Recommend Ingredients
+                </>
+              )}
+            </button>
           </div>
         </div>
         <div className={css.dashboard}>
-          {sortedAndFilteredItems.length === 0 ? (
+          {sortedAndFilteredItems.length === 0 && (!recommendedIngredients || recommendedIngredients.length === 0) ? (
             <p>No items found...</p>
           ) : (
             <div className={css.itemsGrid}>
+              {!isLoadingIngredients && recommendedIngredients.map((ingredient, index) => (
+                <div 
+                  key={`ingredient-${index}`}
+                  className={css.recommendedRecipePurple}
+                >
+                  <div className={css.itemCardContent}>
+                    <div className={css.itemHeader}>
+                      <div className={css.itemHeaderLeft}>
+                        <h3>{ingredient.name.charAt(0).toUpperCase() + ingredient.name.slice(1)}</h3>
+                      </div>
+                      <button 
+                        className={css.addButton}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const newId = crypto.randomUUID();
+                          // Remove card immediately
+                          setRecommendedIngredients(prev => prev.filter(ing => ing.name !== ingredient.name));
+                          // Add item with just the name
+                          const result = await client(addItem).applyAction(
+                            {
+                              id: newId,
+                              name: ingredient.name.charAt(0).toUpperCase() + ingredient.name.slice(1),
+                            },
+                            {
+                              $returnEdits: true,
+                            }
+                          );
+                          
+                          if (result.type === "edits") {
+                            // Initial refresh
+                            const items: Osdk.Instance<FridgeItem>[] = [];
+                            for await (const obj of client(FridgeItem).asyncIter()) {
+                              items.push(obj);
+                            }
+                            setObjects(items);
+
+                            // Wait for dateAdded to be set
+                            const interval = setInterval(async () => {
+                              const updatedItems: Osdk.Instance<FridgeItem>[] = [];
+                              for await (const obj of client(FridgeItem).asyncIter()) {
+                                updatedItems.push(obj);
+                              }
+                              const newItem = updatedItems.find(item => item.$primaryKey === newId);
+                              if (newItem?.dateAdded) {
+                                setObjects(updatedItems);
+                                clearInterval(interval);
+                              }
+                            }, 1000);
+
+                            // Clear interval after 10 seconds to prevent infinite polling
+                            setTimeout(() => clearInterval(interval), 10000);
+                          }
+                        }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                    <p>Appears in {ingredient.num_appearance} of your favourite recipes</p>
+                  </div>
+                </div>
+              ))}
               {sortedAndFilteredItems.map((item) => (
                 <div
                   key={item.$primaryKey}
@@ -720,7 +832,7 @@ function Home() {
       </div>
 
       <div className={css.recommendedSection}>
-        <h2 style={{ textAlign: 'center' }}>Recommended Recipes 📄</h2>
+        <h2 style={{ textAlign: 'center' }}>Recommended Recipes 🥘</h2>
         <div style={{ 
           padding: '0 24px',
           marginTop: '24px',
