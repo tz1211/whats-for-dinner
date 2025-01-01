@@ -669,13 +669,13 @@
 }
 
 .filterButton.active {
-  background: #2a4365;
-  border-color: #2c5282;
+  background: #854d0e;
+  border-color: #a16207;
 }
 
 .filterButton.active:hover {
-  background: #2c5282;
-  border-color: #2b6cb0;
+  background: #a16207;
+  border-color: #b45309;
 }
 
 .selectCheckbox {
