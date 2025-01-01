@@ -728,13 +728,23 @@ function Home() {
             </div>
             <button 
               className={css.recipeOfDayButton}
-              onClick={handleIngredientsRecommendation}
+              onClick={() => {
+                if (recommendedIngredients.length > 0) {
+                  setRecommendedIngredients([]);
+                } else {
+                  handleIngredientsRecommendation();
+                }
+              }}
               disabled={isLoadingIngredients}
             >
               {isLoadingIngredients ? (
                 <>
                   <div className={css.spinner}></div>
                   Loading...
+                </>
+              ) : recommendedIngredients.length > 0 ? (
+                <>
+                  Hide Recommendations
                 </>
               ) : (
                 <>
