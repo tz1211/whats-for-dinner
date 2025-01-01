@@ -398,6 +398,9 @@ function Home() {
     if (label === "Quantity" && value === 0) {
       return null;
     }
+    if (label === "Days until Expiration" && value < 0) {
+      return null;
+    }
     if (typeof value === 'boolean') {
       return <p>{label}: {value ? 'Yes' : 'No'}</p>;
     }
