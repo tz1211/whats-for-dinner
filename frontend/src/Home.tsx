@@ -15,7 +15,7 @@ interface RecipeResult {
   Ingredients: string;
   'Items to Buy': string;
   Link: string;
-  Procedure: string;
+  Procedure: string | string[];
 }
 
 interface IngredientRecommendation {
@@ -550,7 +550,7 @@ function Home() {
 
       const result = await client(recipeRetriever).executeFunction({
         items: itemsSet,
-        topSearch: 10,
+        topSearch: 5,
         recipes: recipesSet,
         userPreference: userPreference.trim() || "None"
       });
@@ -961,16 +961,25 @@ function Home() {
               
               <h4>Procedure:</h4>
               {(() => {
-                try {
-                  const procedures = JSON.parse(recommendedRecipes[currentRecipeIndex].Procedure);
-                  return procedures.map((step: string, index: number) => (
-                    <p key={index} style={{ whiteSpace: 'pre-line', marginBottom: '8px' }}>
-                      {index + 1}. {step}
-                    </p>
-                  ));
-                } catch (e) {
-                  return <p style={{ whiteSpace: 'pre-line' }}>{recommendedRecipes[currentRecipeIndex].Procedure}</p>;
+                const procedure = recommendedRecipes[currentRecipeIndex].Procedure;
+                if (Array.isArray(procedure)) {
+                  return (
+                    <ol style={{ margin: 0, paddingLeft: '20px' }}>
+                      {procedure.map((step: string, index: number) => (
+                        <li key={index} style={{ 
+                          whiteSpace: 'pre-line',
+                          color: '#b0b0b0',
+                          fontSize: '14px',
+                          lineHeight: '1.6',
+                          marginBottom: '6px'
+                        }}>
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
+                  );
                 }
+                return <p style={{ whiteSpace: 'pre-line', color: '#b0b0b0', fontSize: '14px', lineHeight: '1.6' }}>{procedure}</p>;
               })()}
               
               {recommendedRecipes[currentRecipeIndex].Link && (
