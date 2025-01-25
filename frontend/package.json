@@ -11,9 +11,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@osdk/client": "^2.0.9",
-    "@osdk/oauth": "^1.0.0",
-    "@whatsfordinner/sdk": "^0.13.0",
+    "@osdk/client": "^2.0.12",
+    "@osdk/oauth": "^1.0.1",
+    "@whatsfordinner/sdk": "^0.15.0",
     "react": "^18",
     "react-dom": "^18",
     "react-router-dom": "^6.23.1"
