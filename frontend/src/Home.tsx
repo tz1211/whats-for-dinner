@@ -535,6 +535,7 @@ function Home() {
   const handleRecipeOfDay = async () => {
     setIsLoadingRecipeOfDay(true);
     setRecommendedRecipes([]);
+    setCurrentRecipeIndex(0);
 
     try {
       const itemsSet = client(FridgeItem).where({
@@ -550,13 +551,13 @@ function Home() {
 
       const result = await client(recipeRetriever).executeFunction({
         items: itemsSet,
-        topSearch: 5,
+        topSearch: 10,
         recipes: recipesSet,
         userPreference: userPreference.trim() || "None"
       });
       
       if (Array.isArray(result) && result.length > 0) {
-        const recipes = [result[0]];
+        const recipes = result.slice(0, 3);
         setRecommendedRecipes(recipes);
         localStorage.setItem('lastGeneratedRecipes', JSON.stringify(recipes));
         localStorage.setItem('lastRecipeUpdate', new Date().getTime().toString());
