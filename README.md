@@ -1,10 +1,8 @@
 # What's For Dinner? 🍽️
 
-## Demo video 
-
-[To be added]
-
 ## Overview 
+
+[Video Demo](https://youtu.be/QRcH9U7YFfo)
 
 A fridge management web application that helps you organise your fridge and track your favourite recipes. 
 
